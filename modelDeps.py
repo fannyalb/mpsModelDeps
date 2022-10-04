@@ -11,10 +11,12 @@ project_path = ""
 ignorelist = ["test", "org.modellwerkstatt"]
 
 sortweights = dict()
-sortweights[".unit."] = 10
-sortweights[".domain."] = 20
-sortweights[".extern."] = 30
-sortweights[".tecinfra."] = 40
+sortweights[".unit."] = 100
+sortweights[".inout."] = 200
+sortweights[".domain."] = 300
+sortweights[".extern."] = 400
+sortweights[".basis."] = 450
+sortweights[".tecinfra."] = 500
 
 
 def isToIgnore(name):

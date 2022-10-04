@@ -39,7 +39,7 @@ def drawDeps(model_deps):
                            arrowstyle='->',
                            edge_color=edge_colors,
                            edge_cmap=colormap,
-                           connectionstyle="arc3,rad=1.5",
+                           connectionstyle="arc3,rad=0.9",
                            arrowsize=14
                            )
     labels = nx.draw_networkx_labels(G,
