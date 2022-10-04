@@ -2,7 +2,6 @@
 import pathlib
 import os
 import re
-import glob
 import argparse
 from drawDeps import drawDeps
 
@@ -37,11 +36,8 @@ def sortweightsPrinted():
 def get_mps_files(inDir):
     print(f'Get mspfiles from {inDir}')
     if not inDir.is_dir():
-        print(f'{inDir} is not a Dir!')
         exit
-    # files = glob.glob(os.path.join(inDir, '*.mps'), recursive=True)
     files = pathlib.Path(inDir).rglob('*.mps')
-    print(files)
     return files
 
 
@@ -147,7 +143,8 @@ def sortFunc(modelname):
 
 
 def sortModelDeps(model_deps):
-    sorted_nodes = dict(sorted(model_deps.items(),
+    step_1 = dict(sorted(model_deps.items()))
+    sorted_nodes = dict(sorted(step_1.items(),
                                key=lambda x: sortFunc(x[0])))
     return sorted_nodes
 
@@ -163,4 +160,4 @@ def main():
 
 
 if __name__ == "__main__":
-     main()
+    main()

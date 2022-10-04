@@ -22,8 +22,8 @@ def drawDeps(model_deps):
 
     d = dict(G.out_degree())
     colormap = plt.cm.gist_rainbow
-    fig = plt.figure(1, figsize=(80, 80))
-    node_sizes = [(v*50) for v in d.values()]
+    fig = plt.figure(1, figsize=(14, 10))
+    # node_sizes = [(v*50) for v in d.values()]
     # coord = nx.kamada_kawai_layout(G)
     # coord = nx.shell_layout(G, rotate=1.5)
     # coord = nx.circular_layout(G)
@@ -32,7 +32,7 @@ def drawDeps(model_deps):
     nx.draw_networkx_nodes(G, coord,
                            node_color=node_colors_list,
                            cmap=colormap,
-                           node_size=node_sizes
+                           # node_size=node_sizes
                            )
     nx.draw_networkx_edges(G,
                            coord,
@@ -58,5 +58,5 @@ def arc_layout(nodes):
     for node in nodes:
         nodename = node
         coord[nodename] = [i, 0]
-        i = i+3
+        i = i+6
     return coord
