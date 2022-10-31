@@ -2,38 +2,6 @@ import networkx as nx
 import matplotlib.pyplot as plt
 
 
-def drawDeps(model_deps):
-    G = nx.DiGraph()
-    node_colors = dict()
-    edge_colors = []
-    i = 1
-    for model in model_deps.keys():
-        G.add_node(model)
-        node_colors[model] = i
-        i += 1
-
-    for model in model_deps.keys():
-        for dep in model_deps[model]:
-            G.add_edge(model, dep)
-            edge_colors.append(node_colors[model])
-            if dep not in model_deps.keys():
-                node_colors[dep] = 0
-    node_colors_list = list(node_colors.values())
-
-    coord = arc_layout(G.nodes())
-    printGraph(G, coord, node_colors_list, edge_colors)
-
-
-def arc_layout(nodes):
-    coord = dict()
-    i = 0
-    for node in nodes:
-        nodename = node
-        coord[nodename] = [i, 0]
-        i = i+6
-    return coord
-
-
 def drawModels(models):
     G = nx.DiGraph()
     node_colors = dict()
@@ -55,6 +23,7 @@ def drawModels(models):
     coord = arcLayout(G.nodes(), models)
     printGraph(G, coord, node_colors_list, edge_colors)
 
+
 def arcLayout(nodes, models):
     coord = dict()
     i = 0
@@ -65,7 +34,7 @@ def arcLayout(nodes, models):
             weight = models[nodename].weight
         x = i+weight
         coord[nodename] = [x, 0]
-        i+=3
+        i += 3
     return coord
 
 

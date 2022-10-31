@@ -4,7 +4,6 @@ import pathlib
 import os
 import re
 import argparse
-from drawDeps import drawDeps
 from drawDeps import drawModels
 from Model import Model
 
@@ -44,34 +43,12 @@ def get_mps_files(inDir):
     return files
 
 
-def find_model_deps(path):
-    dep_pattern = "<import index.*\(([\w\.]*)\).* />$"
-    model_pattern = "<model.*\((.*)\).*>$"
-    model_deps = dict()
-    mpsfiles = get_mps_files(path)
-    for filepath in mpsfiles:
-        filename = os.path.basename(filepath)
-        deps = set()
-        mpsfile = open(filepath, "r")
-        model = filename[:-4]
-        for line in mpsfile:
-            depmatch = re.search(dep_pattern, line)
-            modelmatch = re.search(model_pattern, line)
-            if depmatch and depmatch.group(1):
-                deps.add(depmatch.group(1))
-            if modelmatch and modelmatch.group(1):
-                model = modelmatch.group(1)
-        model_deps[model] = deps
-    return model_deps
-
 def findModels(path):
     dep_pattern = "<import index.* ref=\"(.*)\(([\w\.]*)\).* />$"
     model_pattern = "<model ref=\"(.*)\((.*)\).*>$"
-    model_deps = dict()
     models = dict()
     mpsfiles = get_mps_files(path)
     for filepath in mpsfiles:
-        deps = set()
         mpsfile = open(filepath, "r")
         model = Model()
         for line in mpsfile:
@@ -107,20 +84,6 @@ def findModels(path):
     return models
 
 
-def filterModelDeps(model_deps):
-    filtered_deps = dict()
-    for model in model_deps:
-        if isToIgnore(model):
-            continue
-        deps = set()
-        for dep in model_deps[model]:
-            if isToIgnore(dep):
-                continue
-            deps.add(dep)
-        filtered_deps[model] = deps
-    return filtered_deps
-
-
 def filterModels(models):
     filtered_models = dict()
     for model in models.values():
@@ -134,13 +97,6 @@ def filterModels(models):
         model.deps = deps
         filtered_models[model.ref] = model
     return filtered_models
-
-
-def printModelDepsAsString(model_deps):
-    for model in model_deps:
-        print(f'Model {model} depends on:')
-        for dep in model_deps[model]:
-            print(f'\t{dep}')
 
 
 def printModelsAsString(models):
@@ -207,21 +163,6 @@ def parseArguments(parser):
     return project_path
 
 
-def sortFunc(modelname):
-    categories = list(sortweights.keys())
-    for category in reversed(categories):
-        if category in modelname:
-            return sortweights[category]
-    return 50
-
-
-def sortModelDeps(model_deps):
-    sorted_by_name = dict(sorted(model_deps.items()))
-    sorted_nodes = dict(sorted(sorted_by_name.items(),
-                               key=lambda x: sortFunc(x[0])))
-    return sorted_nodes
-
-
 def sortModels(models):
     sorted_by_name = dict(sorted(models.items(),
                                  key=lambda x: x[1].name))
@@ -241,14 +182,12 @@ def addWeights(models):
 def main():
     parser = init_argparse()
     project_path = parseArguments(parser)
-    # model_deps = find_model_deps(project_path)
     models = findModels(project_path)
     filtered_models = filterModels(models)
     addWeights(models)
     sorted_models = sortModels(filtered_models)
     printModelNamesOnly(sorted_models)
     drawModels(sorted_models)
-    # drawDeps(sorted_deps)
 
 
 if __name__ == "__main__":
