@@ -1,21 +1,24 @@
 #!/bin/python3
+#!/bin/python3
 import pathlib
 import os
 import re
 import argparse
 from drawDeps import drawDeps
+from drawDeps import drawModels
+from Model import Model
 
 project_path = ""
 
 ignorelist = ["test", "org.modellwerkstatt"]
 
 sortweights = dict()
-sortweights[".unit."] = 100
-sortweights[".inout."] = 200
-sortweights[".domain."] = 300
-sortweights[".extern."] = 400
-sortweights[".basis."] = 450
-sortweights[".tecinfra."] = 500
+sortweights[".unit."] = 10
+sortweights[".inout."] = 20
+sortweights[".domain."] = 30
+sortweights[".extern."] = 40
+sortweights[".basis."] = 50
+sortweights[".tecinfra."] = 50
 
 
 def isToIgnore(name):
@@ -61,6 +64,48 @@ def find_model_deps(path):
         model_deps[model] = deps
     return model_deps
 
+def findModels(path):
+    dep_pattern = "<import index.* ref=\"(.*)\(([\w\.]*)\).* />$"
+    model_pattern = "<model ref=\"(.*)\((.*)\).*>$"
+    model_deps = dict()
+    models = dict()
+    mpsfiles = get_mps_files(path)
+    for filepath in mpsfiles:
+        deps = set()
+        mpsfile = open(filepath, "r")
+        model = Model()
+        for line in mpsfile:
+            depmatch = re.search(dep_pattern, line)
+            modelmatch = re.search(model_pattern, line)
+            dep = None
+            # Find Model
+            if modelmatch and modelmatch.group(1):
+                modref = modelmatch.group(1)
+                if modref in models:
+                    model = models[modref]
+                    model.isProjectModel = True
+                if modref not in models:
+                    model = Model()
+                    model.ref = modref
+                    models[model.ref] = model
+                    if len(modelmatch.groups()) > 1:
+                        model.name = modelmatch.group(2)
+            # find Deps
+            if depmatch and depmatch.group(1):
+                depref = depmatch.group(1)
+                if depref in models:
+                    dep = models[depref]
+                else:
+                    dep = Model()
+                    dep.ref = depref
+                    dep.isProjectModel = False
+                    if len(depmatch.groups()) > 1:
+                        dep.name = depmatch.group(2)
+                    models[depref] = dep
+                model.deps.append(dep)
+
+    return models
+
 
 def filterModelDeps(model_deps):
     filtered_deps = dict()
@@ -76,11 +121,39 @@ def filterModelDeps(model_deps):
     return filtered_deps
 
 
+def filterModels(models):
+    filtered_models = dict()
+    for model in models.values():
+        if isToIgnore(model.name):
+            continue
+        deps = []
+        for dep in model.deps:
+            if isToIgnore(dep.name):
+                continue
+            deps.append(dep)
+        model.deps = deps
+        filtered_models[model.ref] = model
+    return filtered_models
+
+
 def printModelDepsAsString(model_deps):
     for model in model_deps:
         print(f'Model {model} depends on:')
         for dep in model_deps[model]:
             print(f'\t{dep}')
+
+
+def printModelsAsString(models):
+    for model1 in models.values():
+        if model1.isProjectModel:
+            print(f'Model {model1.name} - Weight {model1.weight}')
+            for dep in model1.deps:
+                print(f'\tdepends on {dep.name}')
+
+def printModelNamesOnly(models):
+    for model1 in models.values():
+        if model1.isProjectModel:
+            print(f'{model1.name} - {model1.weight}')
 
 
 def init_argparse() -> argparse.ArgumentParser:
@@ -126,7 +199,7 @@ def parseArguments(parser):
         for kv in args.sortby:
             items = kv.split('=')
             key = items[0].strip()
-            if len(items) > 1 and items[1].isdigit():
+            if len(items) > 1 and items[1].lstrip("-").isdigit():
                 value = items[1]
                 print(f'Add "{key}={value}" to sortweights for sorting')
                 sortweights[key] = int(value)
@@ -143,20 +216,39 @@ def sortFunc(modelname):
 
 
 def sortModelDeps(model_deps):
-    step_1 = dict(sorted(model_deps.items()))
-    sorted_nodes = dict(sorted(step_1.items(),
+    sorted_by_name = dict(sorted(model_deps.items()))
+    sorted_nodes = dict(sorted(sorted_by_name.items(),
                                key=lambda x: sortFunc(x[0])))
     return sorted_nodes
+
+
+def sortModels(models):
+    sorted_by_name = dict(sorted(models.items(),
+                                 key=lambda x: x[1].name))
+    sorted_nodes = dict(sorted(sorted_by_name.items(),
+                               key=lambda x: x[1].weight))
+    return sorted_nodes
+
+
+def addWeights(models):
+    categories = list(sortweights.keys())
+    for model in models.values():
+        for category in reversed(categories):
+            if category in model.name:
+                model.weight += sortweights[category]
 
 
 def main():
     parser = init_argparse()
     project_path = parseArguments(parser)
-    model_deps = find_model_deps(project_path)
-    filtered_deps = filterModelDeps(model_deps)
-    sorted_deps = sortModelDeps(filtered_deps)
-
-    drawDeps(sorted_deps)
+    # model_deps = find_model_deps(project_path)
+    models = findModels(project_path)
+    filtered_models = filterModels(models)
+    addWeights(models)
+    sorted_models = sortModels(filtered_models)
+    printModelNamesOnly(sorted_models)
+    drawModels(sorted_models)
+    # drawDeps(sorted_deps)
 
 
 if __name__ == "__main__":

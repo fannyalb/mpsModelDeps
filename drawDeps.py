@@ -20,7 +20,56 @@ def drawDeps(model_deps):
                 node_colors[dep] = 0
     node_colors_list = list(node_colors.values())
 
-    d = dict(G.out_degree())
+    coord = arc_layout(G.nodes())
+    printGraph(G, coord, node_colors_list, edge_colors)
+
+
+def arc_layout(nodes):
+    coord = dict()
+    i = 0
+    for node in nodes:
+        nodename = node
+        coord[nodename] = [i, 0]
+        i = i+6
+    return coord
+
+
+def drawModels(models):
+    G = nx.DiGraph()
+    node_colors = dict()
+    edge_colors = []
+    i = 1
+    for model in models.values():
+        G.add_node(model.name)
+        node_colors[model.name] = i
+        i += 1
+
+    for model in models.values():
+        for dep in model.deps:
+            G.add_edge(model.name, dep.name)
+            edge_colors.append(node_colors[model.name])
+            if dep not in models.values():
+                node_colors[dep.name] = 0
+    node_colors_list = list(node_colors.values())
+
+    coord = arcLayout(G.nodes(), models)
+    printGraph(G, coord, node_colors_list, edge_colors)
+
+def arcLayout(nodes, models):
+    coord = dict()
+    i = 0
+    for node in nodes:
+        nodename = node
+        weight = 1
+        if nodename in models:
+            weight = models[nodename].weight
+        x = i+weight
+        coord[nodename] = [x, 0]
+        i+=3
+    return coord
+
+
+def printGraph(G, coord, node_colors_list, edge_colors):
     colormap = plt.cm.gist_rainbow
     fig = plt.figure(1, figsize=(14, 10))
     # node_sizes = [(v*50) for v in d.values()]
@@ -28,7 +77,6 @@ def drawDeps(model_deps):
     # coord = nx.shell_layout(G, rotate=1.5)
     # coord = nx.circular_layout(G)
     # coord = nx.spring_layout(G, k=1)
-    coord = arc_layout(G.nodes())
     nx.draw_networkx_nodes(G, coord,
                            node_color=node_colors_list,
                            cmap=colormap,
@@ -50,13 +98,3 @@ def drawDeps(model_deps):
 
     fig.tight_layout()
     plt.show()
-
-
-def arc_layout(nodes):
-    coord = dict()
-    i = 0
-    for node in nodes:
-        nodename = node
-        coord[nodename] = [i, 0]
-        i = i+6
-    return coord
