@@ -15,10 +15,13 @@ def drawModels(models):
     for model in models.values():
         for dep in model.deps:
             G.add_edge(model.name, dep.name)
-            edge_colors.append(node_colors[model.name])
             if dep not in models.values():
                 node_colors[dep.name] = 0
+
+    for edge in G.edges():
+        edge_colors.append(node_colors[edge[0]])
     node_colors_list = list(node_colors.values())
+
 
     coord = arcLayout(G.nodes(), models)
     printGraph(G, coord, node_colors_list, edge_colors)
@@ -53,7 +56,7 @@ def printGraph(G, coord, node_colors_list, edge_colors):
                            )
     nx.draw_networkx_edges(G,
                            coord,
-                           arrowstyle='->',
+                           # arrowstyle='->',
                            edge_color=edge_colors,
                            edge_cmap=colormap,
                            connectionstyle="arc3,rad=0.9",
