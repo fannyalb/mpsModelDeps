@@ -127,15 +127,19 @@ def init_argparse() -> argparse.ArgumentParser:
                         type=pathlib.Path,
                         help='path to MPS-models')
     parser.add_argument('--ignore', nargs='*',
-                        help='list of (sub)strings to ignore (models or deps)'
+                        help='Liste von (sub)Strings (Packagenamensteile) \
+                                die zu ignorieren sind (models or deps) \
+                                z.B. --ignore modellwerkstatt'
                         )
-    parser.add_argument('--sortby', nargs='*',
+    parser.add_argument('--sort', nargs='*',
                         metavar="KEY=VALUE",
-                        help='list of (substrings) and weigths to sort by.  \
-                                e.g. "inout=10"')
+                        help='Liste von Packagenamensteilen mit Gewichten, \
+                              nach denen sortiert wird \
+                              Gewichte werden addiert! \
+                                e.g. "--sort inout=10 akteur=6 benutzer=-3"')
     parser.add_argument('--clearsort',
                         action="store_true",
-                        help='Clear current sortweights')
+                        help='Aktuelle Sortiergewichte loeschen')
     return parser
 
 
@@ -151,8 +155,8 @@ def parseArguments(parser):
     if args.clearsort:
         print('Deleting default sortweights....')
         sortweights.clear()
-    if args.sortby:
-        for kv in args.sortby:
+    if args.sort:
+        for kv in args.sort:
             items = kv.split('=')
             key = items[0].strip()
             if len(items) > 1 and items[1].lstrip("-").isdigit():
