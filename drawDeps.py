@@ -9,7 +9,7 @@ def drawModels(models):
     i = 1
     for model in models.values():
         G.add_node(model.name)
-        node_colors[model.name] = i
+        node_colors[model.name] = i 
         i += 1
 
     for model in models.values():
@@ -54,8 +54,8 @@ def printGraph(G, coord, node_colors_list, edge_colors):
     nx.draw_networkx_edges(G,
                            coord,
                            arrowstyle='->',
-                           edge_color=edge_colors,
-                           edge_cmap=colormap,
+                           # edge_color=edge_colors,
+                           # edge_cmap=colormap,
                            connectionstyle="arc3,rad=0.9",
                            arrowsize=14
                            )

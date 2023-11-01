@@ -9,7 +9,7 @@ from Model import Model
 
 project_path = ""
 
-ignorelist = ["test", "org.modellwerkstatt"]
+ignorelist = [".tests", ".test", "org.modellwerkstatt", "at.hafina.basis"]
 
 sortweights = dict()
 sortweights[".unit."] = 10
@@ -43,13 +43,37 @@ def get_mps_files(inDir):
     return files
 
 
+def createModel(modelref):
+    model = Model()
+    model.ref = modelref
+    model.name = getName(modelref)
+    return model
+
+
+def getName(modelref):
+    modelname = modelref
+    name_pattern = ".*\(([a-zA-Z.\/]*)\)"
+    namematch = re.search(name_pattern, modelref)
+    if namematch and namematch.group(1):
+        modelname = namematch.group(1)
+        if("/" in modelname):
+            parts = modelname.split("/")
+            if parts[1]: 
+                modelname = parts[1]
+            else: 
+                modelname = parts[0]
+    print(modelname)
+    return modelname
+
+
 def findModels(path):
-    dep_pattern = "<import index.* ref=\"(.*)\(([\w\.]*)\).* />$"
-    model_pattern = "<model ref=\"(.*)\((.*)\).*>$"
+    dep_pattern = "<import index=\"[a-zA-Z0-9]*\" ref=\"(.*)\".*\/>"
+    model_pattern = "<model ref=\"(.*)\">"
     models = dict()
     mpsfiles = get_mps_files(path)
     for filepath in mpsfiles:
         mpsfile = open(filepath, "r")
+        print(filepath)
         model = Model()
         for line in mpsfile:
             depmatch = re.search(dep_pattern, line)
@@ -62,26 +86,52 @@ def findModels(path):
                     model = models[modref]
                     model.isProjectModel = True
                 if modref not in models:
-                    model = Model()
-                    model.ref = modref
+                    createModel(modref)
                     models[model.ref] = model
-                    if len(modelmatch.groups()) > 1:
-                        model.name = modelmatch.group(2)
             # find outgoing dependendcies 
             if depmatch and depmatch.group(1):
                 depref = depmatch.group(1)
                 if depref in models:
                     depModel = models[depref]
                 else:
-                    depModel = Model()
-                    depModel.ref = depref
+                    depModel = createModel(depref)
                     depModel.isProjectModel = False
-                    if len(depmatch.groups()) > 1:
-                        depModel.name = depmatch.group(2)
                     models[depref] = depModel
                 model.outgoing_deps.append(depModel)
+                depModel.incoming_deps.append(model)
 
     return models
+
+
+def getCommonSubstring(models):
+    common = ""
+    for modeli in models.values():
+        if not common:
+            common = modeli.name
+        else:
+            common = findLongestSubstring(common, modeli.name)
+    return common
+
+
+def shortenModelnames(models):
+    common_substring = getCommonSubstring(models)
+    if common_substring:
+        for model in models.values():
+            parts = model.name.split(common_substring)
+            if len(parts) > 1: 
+                newname = parts[1]
+                model.name = newname
+
+
+
+def findLongestSubstring(str1, str2):
+    result = ""
+    for i in range(0, min(len(str1),len(str2))):
+        if str1[i] == str2[i]:
+            result += str1[i]
+        else:
+            return result
+    return result
 
 
 def filterModels(models):
@@ -105,8 +155,11 @@ def printModelsAsString(models):
     for model1 in models.values():
         if model1.isProjectModel:
             print(f'Model {model1.name} - Weight {model1.weight}')
-            for dep in model1.outgoing_deps:
-                print(f'\tdepends on {dep.name}')
+            print(f'\t{len(model1.outgoing_deps)} outgoing ')
+            print(f'\t{len(model1.incoming_deps)} incoming ')
+            print(f'\tInstability: {round(model1.getInstability(),2)}')
+            # for dep in model1.outgoing_deps:
+                # print(f'\tdepends on {dep.name}')
 
 def printModelNamesOnly(models):
     for model1 in models.values():
@@ -166,10 +219,23 @@ def parseArguments(parser):
 
 
 def sortModels(models):
-    sorted_by_name = dict(sorted(models.items(),
-                                 key=lambda x: x[1].name))
-    sorted_nodes = dict(sorted(sorted_by_name.items(),
-                               key=lambda x: x[1].weight))
+    sorted_by_outgoing_deps = dict(sorted(
+        models.items(),
+        key=lambda x: len(x[1].outgoing_deps),
+        reverse=True))
+    sorted_by_incoming_deps = dict(sorted(
+        models.items(),
+        key=lambda x: len(x[1].incoming_deps),
+        reverse=True))
+    sorted_by_instability = dict(sorted(
+        sorted_by_incoming_deps.items(),
+        key=lambda x: x[1].getInstability(),
+        reverse=True))
+    # sorted_by_name = dict(sorted(models.items(),
+    #                              key=lambda x: x[1].name))
+    # sorted_nodes = dict(sorted(sorted_by_name.items(),
+    #                            key=lambda x: x[1].weight))
+    sorted_nodes = sorted_by_instability
     return sorted_nodes
 
 
@@ -185,11 +251,12 @@ def main():
     parser = init_argparse()
     project_path = parseArguments(parser)
     models = findModels(project_path)
-    printModelsAsString(models)
     filtered_models = filterModels(models)
-    addWeights(models)
+    # addWeights(models)
     sorted_models = sortModels(filtered_models)
-    printModelNamesOnly(sorted_models)
+    # printModelNamesOnly(sorted_models)
+    shortenModelnames(sorted_models)
+    printModelsAsString(sorted_models)
     drawModels(sorted_models)
 
 
