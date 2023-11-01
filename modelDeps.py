@@ -54,7 +54,7 @@ def findModels(path):
         for line in mpsfile:
             depmatch = re.search(dep_pattern, line)
             modelmatch = re.search(model_pattern, line)
-            dep = None
+            depModel = None
             # Find Model
             if modelmatch and modelmatch.group(1):
                 modref = modelmatch.group(1)
@@ -67,19 +67,19 @@ def findModels(path):
                     models[model.ref] = model
                     if len(modelmatch.groups()) > 1:
                         model.name = modelmatch.group(2)
-            # find Deps
+            # find outgoing dependendcies 
             if depmatch and depmatch.group(1):
                 depref = depmatch.group(1)
                 if depref in models:
-                    dep = models[depref]
+                    depModel = models[depref]
                 else:
-                    dep = Model()
-                    dep.ref = depref
-                    dep.isProjectModel = False
+                    depModel = Model()
+                    depModel.ref = depref
+                    depModel.isProjectModel = False
                     if len(depmatch.groups()) > 1:
-                        dep.name = depmatch.group(2)
-                    models[depref] = dep
-                model.deps.append(dep)
+                        depModel.name = depmatch.group(2)
+                    models[depref] = depModel
+                model.outgoing_deps.append(depModel)
 
     return models
 
@@ -88,13 +88,15 @@ def filterModels(models):
     filtered_models = dict()
     for model in models.values():
         if isToIgnore(model.name):
+            model.isToIgnore = True
             continue
         deps = []
-        for dep in model.deps:
+        for dep in model.outgoing_deps:
             if isToIgnore(dep.name):
+                dep.isToIgnore = True
                 continue
             deps.append(dep)
-        model.deps = deps
+        model.outgoing_deps = deps
         filtered_models[model.ref] = model
     return filtered_models
 
@@ -103,7 +105,7 @@ def printModelsAsString(models):
     for model1 in models.values():
         if model1.isProjectModel:
             print(f'Model {model1.name} - Weight {model1.weight}')
-            for dep in model1.deps:
+            for dep in model1.outgoing_deps:
                 print(f'\tdepends on {dep.name}')
 
 def printModelNamesOnly(models):
@@ -183,6 +185,7 @@ def main():
     parser = init_argparse()
     project_path = parseArguments(parser)
     models = findModels(project_path)
+    printModelsAsString(models)
     filtered_models = filterModels(models)
     addWeights(models)
     sorted_models = sortModels(filtered_models)

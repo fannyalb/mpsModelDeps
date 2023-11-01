@@ -13,7 +13,7 @@ def drawModels(models):
         i += 1
 
     for model in models.values():
-        for dep in model.deps:
+        for dep in model.outgoing_deps:
             G.add_edge(model.name, dep.name)
             edge_colors.append(node_colors[model.name])
             if dep not in models.values():
