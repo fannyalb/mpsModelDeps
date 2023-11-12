@@ -8,12 +8,17 @@ def drawModels(models):
     edge_colors = []
     i = 1
     for model in models.values():
+        print(f'{model.name} : {len(model.outgoing_deps)} outgoing deps')
         G.add_node(model.name)
         node_colors[model.name] = i 
-        i += 1
+        i += 2
 
     for model in models.values():
+        # print(f'Adding deps for {model.name}')
         for dep in model.outgoing_deps:
+            # print(f'Dep : {dep.name})')
+            if dep.name not in G.nodes():
+                G.add_node(dep.name)
             G.add_edge(model.name, dep.name)
             edge_colors.append(node_colors[model.name])
             if dep not in models.values():
@@ -34,12 +39,13 @@ def arcLayout(nodes, models):
             weight = models[nodename].weight
         x = i+weight
         coord[nodename] = [x, 0]
-        i += 3
+        i += 5
     return coord
 
 
 def printGraph(G, coord, node_colors_list, edge_colors):
-    colormap = plt.cm.gist_rainbow
+    # colormap = plt.cm.gist_rainbow
+    colormap = plt.cm.twilight
     fig = plt.figure(1, figsize=(14, 10))
     # node_sizes = [(v*50) for v in d.values()]
     # coord = nx.kamada_kawai_layout(G)
@@ -54,8 +60,8 @@ def printGraph(G, coord, node_colors_list, edge_colors):
     nx.draw_networkx_edges(G,
                            coord,
                            arrowstyle='->',
-                           # edge_color=edge_colors,
-                           # edge_cmap=colormap,
+                           edge_color=edge_colors,
+                           edge_cmap=colormap,
                            connectionstyle="arc3,rad=0.9",
                            arrowsize=14
                            )

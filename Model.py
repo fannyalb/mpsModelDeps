@@ -16,3 +16,17 @@ class Model:
         instability = fan_out / (fan_in + fan_out)
         return instability
 
+    def dependsOn(self, other):
+        return other in self.outgoing_deps
+
+    def __eq__(self, other):
+        if isinstance(other, Model):
+            return self.ref == other.ref
+        return False
+
+    def __ne__(self, other):
+        equal = self.__eq__(other)
+        if isinstance(other, Model):
+            return not equal
+        return True
+

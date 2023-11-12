@@ -9,19 +9,20 @@ from Model import Model
 
 project_path = ""
 
-ignorelist = [".tests", ".test", "org.modellwerkstatt", "at.hafina.basis"]
+ignorelist = ["JDK",".test", "org.modellwerkstatt", "at.hafina.basis"]
+includelist = []
 
 sortweights = dict()
-sortweights[".unit."] = 10
-sortweights[".inout."] = 20
-sortweights[".domain."] = 30
-sortweights[".extern."] = 40
-sortweights[".basis."] = 50
-sortweights[".tecinfra."] = 50
 
 
 def isToIgnore(name):
     for substring in ignorelist:
+        if substring in name:
+            return True
+    return False
+
+def isToInclude(name):
+    for substring in includelist:
         if substring in name:
             return True
     return False
@@ -47,6 +48,7 @@ def createModel(modelref):
     model = Model()
     model.ref = modelref
     model.name = getName(modelref)
+    print(f'Create: {model.name}\n\t{modelref}')
     return model
 
 
@@ -62,18 +64,18 @@ def getName(modelref):
                 modelname = parts[1]
             else: 
                 modelname = parts[0]
-    print(modelname)
     return modelname
 
 
 def findModels(path):
-    dep_pattern = "<import index=\"[a-zA-Z0-9]*\" ref=\"(.*)\".*\/>"
+    dep_pattern = \
+        "<import index=\"[a-zA-Z0-9]*\" ref=\"([^\s]+)\" .*\/>"
     model_pattern = "<model ref=\"(.*)\">"
     models = dict()
     mpsfiles = get_mps_files(path)
     for filepath in mpsfiles:
         mpsfile = open(filepath, "r")
-        print(filepath)
+        # # print(filepath)
         model = Model()
         for line in mpsfile:
             depmatch = re.search(dep_pattern, line)
@@ -82,12 +84,15 @@ def findModels(path):
             # Find Model
             if modelmatch and modelmatch.group(1):
                 modref = modelmatch.group(1)
+                # if isToIgnore(modref): 
+                #     continue
                 if modref in models:
                     model = models[modref]
                     model.isProjectModel = True
-                if modref not in models:
-                    createModel(modref)
+                else:
+                    model = createModel(modref)
                     models[model.ref] = model
+                    model.isProjectModel = True
             # find outgoing dependendcies 
             if depmatch and depmatch.group(1):
                 depref = depmatch.group(1)
@@ -147,19 +152,24 @@ def filterModels(models):
                 continue
             deps.append(dep)
         model.outgoing_deps = deps
-        filtered_models[model.ref] = model
+        if len(includelist) > 0:
+            if isToInclude(model.name): 
+                filtered_models[model.ref] = model
+        else:
+            filtered_models[model.ref] = model
     return filtered_models
 
 
 def printModelsAsString(models):
     for model1 in models.values():
-        if model1.isProjectModel:
-            print(f'Model {model1.name} - Weight {model1.weight}')
-            print(f'\t{len(model1.outgoing_deps)} outgoing ')
-            print(f'\t{len(model1.incoming_deps)} incoming ')
-            print(f'\tInstability: {round(model1.getInstability(),2)}')
-            # for dep in model1.outgoing_deps:
-                # print(f'\tdepends on {dep.name}')
+        if "KontrolleUI" in model1.name:
+            if model1.isProjectModel:
+                print(f'Model {model1.name} - Weight {model1.weight}')
+                print(f'\t{len(model1.outgoing_deps)} outgoing ')
+                print(f'\t{len(model1.incoming_deps)} incoming ')
+                print(f'\tInstability: {round(model1.getInstability(),2)}')
+                for dep in model1.outgoing_deps:
+                    print(f'\tdepends on {dep.name}')
 
 def printModelNamesOnly(models):
     for model1 in models.values():
@@ -177,6 +187,8 @@ def init_argparse() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog='modelDeps',
                                      formatter_class=argparse.RawDescriptionHelpFormatter,
                                      epilog=epilog_text)
+    parser.add_argument('--include', nargs='*',
+                        help='list of (sub)string to consider')
     parser.add_argument('--path', nargs=1,
                         required=True,
                         type=pathlib.Path,
@@ -203,6 +215,10 @@ def parseArguments(parser):
         for x in args.ignore:
             print(f'Adding "{x}" to Ignorelist')
             ignorelist.append(x)
+    if args.include:
+        for x in args.include:
+            print(f'Adding "{x}" to Includelist')
+            includelist.append(x)
     if args.clearsort:
         print('Deleting default sortweights....')
         sortweights.clear()
@@ -219,23 +235,23 @@ def parseArguments(parser):
 
 
 def sortModels(models):
-    sorted_by_outgoing_deps = dict(sorted(
-        models.items(),
+    sorted_nodes = models
+    sorted_nodes = dict(sorted(
+        sorted_nodes.items(),
         key=lambda x: len(x[1].outgoing_deps),
         reverse=True))
-    sorted_by_incoming_deps = dict(sorted(
+    sorted_nodes = dict(sorted(
         models.items(),
         key=lambda x: len(x[1].incoming_deps),
         reverse=True))
-    sorted_by_instability = dict(sorted(
-        sorted_by_incoming_deps.items(),
-        key=lambda x: x[1].getInstability(),
-        reverse=True))
     # sorted_by_name = dict(sorted(models.items(),
     #                              key=lambda x: x[1].name))
-    # sorted_nodes = dict(sorted(sorted_by_name.items(),
-    #                            key=lambda x: x[1].weight))
-    sorted_nodes = sorted_by_instability
+    sorted_nodes = dict(sorted(
+        sorted_nodes.items(),
+        key=lambda x: x[1].getInstability(),
+        reverse=True))
+    sorted_nodes = dict(sorted(sorted_nodes.items(),
+                               key=lambda x: x[1].weight, reverse=False))
     return sorted_nodes
 
 
@@ -252,10 +268,10 @@ def main():
     project_path = parseArguments(parser)
     models = findModels(project_path)
     filtered_models = filterModels(models)
-    # addWeights(models)
+    addWeights(models)
     sorted_models = sortModels(filtered_models)
-    # printModelNamesOnly(sorted_models)
     shortenModelnames(sorted_models)
+    # printModelNamesOnly(sorted_models)
     printModelsAsString(sorted_models)
     drawModels(sorted_models)
 
